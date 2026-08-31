@@ -1,103 +1,135 @@
-# Aula 1 — Fundamentos da Web: HTML, CSS e JavaScript
+# Aula 2 — Introdução ao React
 
-Antes de usar React ou criar uma API, precisamos entender os três
-ingredientes de toda página web:
+Na aula 1 você viu que, para mudar a página com JavaScript puro,
+precisamos ficar buscando elementos (`querySelector`) e criando/inserindo
+outros na mão (`createElement`, `appendChild`). Isso funciona, mas fica
+difícil de manter conforme a aplicação cresce.
 
-- **HTML** — a estrutura/conteúdo da página (o "esqueleto").
-- **CSS** — a aparência da página (cores, espaçamentos, layout).
-- **JavaScript** — o comportamento da página (o que reage a cliques,
-  o que muda dinamicamente).
+O **React** resolve isso de outra forma: em vez de dizer passo a passo
+*como* mudar a tela, você descreve *como a tela deveria estar* para um
+determinado conjunto de dados, e o React cuida de atualizar o HTML de
+verdade.
 
-Nesta aula vamos montar uma página simples de controle de produtos,
-100% sem frameworks, para entender esses três pilares antes de usar
-React nas próximas aulas.
+## Conceitos novos desta aula
 
-Todos os arquivos desta aula estão em `fundamentos-web/`.
+- **Componente**: um pedaço reutilizável de interface, escrito como uma
+  função JavaScript que retorna HTML "mesclado" com JS (isso se chama
+  **JSX**).
+- **Props**: como um componente recebe dados de fora, parecido com
+  parâmetros de uma função.
+- **SPA (Single Page Application)**: uma aplicação que roda inteira em
+  uma única página HTML, trocando o conteúdo via JavaScript ao invés de
+  recarregar a página.
 
-## 1. HTML — a estrutura
+## 1. Conhecendo o projeto (`frontend/`)
 
-Abra `fundamentos-web/index.html`. Repare na estrutura:
+O projeto React já foi criado com uma ferramenta chamada **Vite**, que
+prepara toda a estrutura necessária para rodar React no navegador. Para
+rodar o projeto:
 
-- `<html>` envolve a página inteira.
-- `<head>` guarda informações que não aparecem na tela (título da aba,
-  link para o CSS).
-- `<body>` é tudo que aparece na tela.
-- Tags como `<header>`, `<main>`, `<section>` organizam o conteúdo em
-  blocos.
-- `<h1>` e `<h2>` são títulos (do maior/mais importante ao menor).
-- `<form>` é um formulário — um conjunto de campos (`<input>`) que o
-  usuário preenche.
-- `<ul>` é uma lista, e cada `<li>` é um item dela.
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-**Experimente:** abra o arquivo `index.html` duas vezes no navegador
-(clique duplo nele) — repare que ele já mostra o título, o formulário e
-a lista de produtos, mesmo sem nenhum CSS ou JS ainda ligado ao
-comportamento. Isso é o HTML puro.
+O terminal vai mostrar um endereço, algo como
+`http://localhost:5173`. Abra esse endereço no navegador.
 
-## 2. CSS — a aparência
+> `npm install` baixa as dependências do projeto (React, Vite, etc.) e só
+> precisa ser rodado quando o projeto é aberto pela primeira vez, ou
+> quando as dependências mudam. `npm run dev` inicia o servidor de
+> desenvolvimento, que atualiza a página automaticamente a cada
+> alteração salva no código.
 
-Abra `fundamentos-web/style.css`. O CSS funciona assim:
+## 2. Estrutura do projeto
 
-```css
-seletor {
-  propriedade: valor;
+Dentro de `frontend/src/`, os arquivos mais importantes são:
+
+- `main.jsx` — ponto de entrada: pega a `<div id="root">` do
+  `index.html` e manda o React renderizar o componente `App` dentro
+  dela.
+- `App.jsx` — o componente principal da aplicação.
+- `components/` — os outros componentes, cada um em seu próprio
+  arquivo.
+- `data/produtos.js` — uma lista de produtos "fixa" (mock), simulando
+  dados que mais pra frente vão vir de um servidor de verdade.
+
+## 3. Componentes e JSX
+
+Abra `src/components/Header.jsx`:
+
+```jsx
+function Header() {
+  return (
+    <header>
+      <h1>Loja Simples</h1>
+      <p>Controle de produtos</p>
+    </header>
+  );
+}
+
+export default Header;
+```
+
+Isso é um componente: uma função que retorna algo parecido com HTML
+(isso é JSX — na prática, vira chamadas de JavaScript que o React
+entende). Repare que ele é **usado** dentro de `App.jsx` como se fosse
+uma tag: `<Header />`.
+
+## 4. Passando dados com props
+
+Abra `src/components/ListaProdutos.jsx` e `src/components/ProdutoItem.jsx`.
+
+`ListaProdutos` recebe uma lista de produtos como **prop** e usa
+`.map()` para transformar cada produto do array em um componente
+`ProdutoItem`:
+
+```jsx
+function ListaProdutos({ produtos }) {
+  return (
+    <ul className="lista-produtos">
+      {produtos.map((produto) => (
+        <ProdutoItem key={produto.id} produto={produto} />
+      ))}
+    </ul>
+  );
 }
 ```
 
-Exemplos no arquivo:
+- `{ produtos }` é a forma de "pegar" a prop `produtos` que foi passada
+  para o componente.
+- `key={produto.id}` é obrigatório sempre que criamos uma lista de
+  componentes em React — ajuda o React a saber qual item é qual.
+- Cada `ProdutoItem` recebe o produto individual como prop e mostra o
+  nome, preço e quantidade.
 
-- `header { background-color: #2f6f4f; }` — seleciona a tag `<header>`
-  e pinta o fundo dela de verde.
-- `.cartao { ... }` — o ponto (`.`) seleciona todo elemento com
-  `class="cartao"` (usado nas duas `<section>` do HTML).
-- `#lista-produtos li { ... }` — o `#` seleciona pelo `id`.
+Em `App.jsx`, a lista mockada de `data/produtos.js` é passada para
+`ListaProdutos`:
 
-**Experimente:** mude a cor do `header` para outra (ex:
-`background-color: #1e3a8a;`), salve e recarregue a página no
-navegador para ver o efeito.
-
-## 3. JavaScript — o comportamento
-
-Abra `fundamentos-web/script.js`. É aqui que a página ganha vida:
-
-```js
-const formProduto = document.querySelector("#form-produto");
+```jsx
+<ListaProdutos produtos={produtosIniciais} />
 ```
 
-`document.querySelector` busca um elemento no HTML usando o mesmo tipo
-de seletor do CSS. A partir daí, o script:
+## 5. Estilização
 
-1. Escuta o evento de **enviar o formulário** (`submit`).
-2. Impede o comportamento padrão do navegador (recarregar a página).
-3. Lê o que foi digitado em cada campo (`.value`).
-4. Cria um novo `<li>` com `document.createElement`.
-5. Adiciona esse `<li>` na lista com `.appendChild`.
+O CSS continua sendo CSS normal — nada muda aí. `src/App.css` é
+importado dentro de `App.jsx` (`import "./App.css"`) e vale para a
+aplicação inteira, exatamente como o `style.css` da aula 1.
 
-**Teste na prática:** abra `index.html` no navegador, preencha o
-formulário "Novo produto" e clique em "Adicionar produto". Um novo item
-aparece na lista de produtos, sem a página recarregar.
+## Exercício da aula
 
-**Recarregue a página (F5).** O item que você adicionou some. Isso
-acontece porque ele só existia na memória da página — não foi salvo em
-nenhum lugar. Esse é exatamente o problema que vamos resolver ao longo
-do curso: primeiro guardando os dados de forma mais organizada (React,
-aula 2 e 3), depois salvando de verdade num servidor (backend, aula 4
-em diante).
-
-## Desafio extra (opcional)
-
-Se sobrar tempo, tente adicionar um botão "Remover" em cada `<li>` da
-lista de exemplo, que apague aquele item ao ser clicado. Dicas:
-
-- Você pode adicionar um `<button>Remover</button>` dentro de cada
-  `<li>` diretamente no HTML.
-- Para reagir ao clique, use `addEventListener("click", ...)` no botão.
-- Para remover o elemento da tela, use `item.remove()`.
+1. Rode o projeto (`npm install` + `npm run dev`) e confirme que a lista
+   de produtos aparece na tela.
+2. Adicione um quinto produto na lista em `src/data/produtos.js` e
+   salve — a página deve atualizar sozinha.
+3. Crie um novo componente `Rodape.jsx` (em `src/components/`) que
+   mostra um texto simples, tipo "Loja Simples - Curso de Full-Stack",
+   e use ele dentro de `App.jsx`, depois da `<main>`.
 
 ## O que vem na próxima aula
 
-Manipular o HTML "na mão" (criar elementos, buscar por seletor, etc.)
-funciona, mas fica difícil de manter conforme a aplicação cresce. Na
-aula 2 vamos conhecer o **React**, uma biblioteca que organiza a
-interface em componentes reutilizáveis e cuida de atualizar a tela pra
-gente.
+Por enquanto a lista de produtos é fixa (vem de um arquivo). Na aula 3
+vamos aprender **`useState`**, o jeito do React de guardar dados que
+podem mudar, e vamos criar um formulário de verdade para adicionar e
+remover produtos na tela.
