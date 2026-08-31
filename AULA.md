@@ -1,139 +1,152 @@
-# Aula 4 — Back-end com Node.js e Express
+# Aula 5 — Completando o CRUD na API
 
-Até aqui, tudo o que fizemos rodava **só no navegador**. Nesta aula
-vamos criar, pela primeira vez, um **servidor**: um programa que fica
-rodando esperando pedidos e respondendo com dados. É o começo do
-**back-end** do projeto.
-
-O front-end (React) e o back-end (Node/Express) são dois projetos
-**separados**, cada um rodando com seu próprio comando, em portas
-diferentes. Nesta aula vamos focar só no back-end — o front-end da
-aula 3 continua existindo em `frontend/`, mas ainda não conversa com o
-servidor novo.
+**CRUD** é uma sigla para as quatro operações básicas de qualquer
+sistema que guarda dados: **C**reate (criar), **R**ead (ler),
+**U**pdate (atualizar) e **D**elete (remover). Na aula 4 fizemos só o
+"R" (`GET /produtos`). Hoje completamos o "C", o "U" e o "D".
 
 ## Conceitos novos desta aula
 
-- **Cliente x Servidor**: o navegador (cliente) pede dados, o servidor
-  responde. É o mesmo modelo usado por qualquer site da internet.
-- **API**: um conjunto de endereços (rotas) que um servidor
-  disponibiliza para outros programas conversarem com ele.
-- **REST**: um jeito comum de organizar essas rotas usando o método
-  HTTP (GET, POST, PUT, DELETE) + um caminho (ex: `/produtos`).
-- **JSON**: o formato de texto usado para trocar dados entre cliente e
-  servidor — muito parecido com um objeto JavaScript.
-- **Porta**: um número que identifica "qual programa" deve receber a
-  conexão numa mesma máquina (o navegador roda em uma porta, a API em
-  outra).
+- **`req.body`**: o conteúdo que o cliente envia junto do pedido (usado
+  em POST e PUT), depois de convertido de JSON para objeto JavaScript.
+- **`req.params`**: os pedaços variáveis de uma rota, como o `:id` em
+  `/produtos/:id`.
+- **Status codes**: números que a resposta HTTP usa para dizer o que
+  aconteceu. Os principais que vamos usar:
+  - `200 OK` — deu certo (usado em GET, PUT, DELETE).
+  - `201 Created` — um novo recurso foi criado (usado em POST).
+  - `404 Not Found` — não existe nada com aquele id.
 
-## 1. Criando o projeto do back-end
+## 1. Lendo o corpo da requisição
 
-O projeto já foi criado em `backend/`, do mesmo jeito que você faria do
-zero:
-
-```bash
-mkdir backend
-cd backend
-npm init -y          # cria o package.json
-npm install express cors
-```
-
-- **Express** é a biblioteca que facilita criar rotas HTTP em Node.js.
-- **cors** é necessária porque o front-end (numa porta) e o back-end
-  (em outra porta) são considerados "origens diferentes" pelo
-  navegador — sem o `cors`, o navegador bloquearia as respostas por
-  segurança. Vamos usar isso de verdade na aula 6.
-
-## 2. Lendo o `server.js`
-
-Abra `backend/server.js`:
+Para o Express conseguir ler o JSON enviado pelo cliente, precisamos
+ligar um middleware (já adicionado em `backend/server.js`):
 
 ```js
-import express from "express";
-import cors from "cors";
-
-const app = express();
-const PORTA = 3000;
-
-app.use(cors());
+app.use(express.json());
 ```
 
-- `express()` cria a aplicação do servidor.
-- `app.use(cors())` liga o middleware de CORS pra toda a aplicação.
+Sem essa linha, `req.body` viria `undefined`.
 
-Logo abaixo, temos o "banco de dados" deste curso:
-
-```js
-let produtos = [
-  { id: 1, nome: "Caderno", preco: 12.5, quantidade: 30 },
-  // ...
-];
-```
-
-É só um **array guardado na memória do processo Node**. Enquanto o
-servidor está rodando, dá pra ler e (nas próximas aulas) alterar esse
-array. Quando o servidor para, ele volta ao estado inicial — não existe
-nenhum arquivo ou banco salvando isso no disco. É a forma mais simples
-possível de simular um banco de dados.
-
-Depois vem a primeira rota de verdade:
+## 2. Criar um produto — `POST /produtos`
 
 ```js
-app.get("/produtos", (req, res) => {
-  res.json(produtos);
+app.post("/produtos", (req, res) => {
+  const { nome, preco, quantidade } = req.body;
+
+  const novoProduto = {
+    id: gerarProximoId(),
+    nome,
+    preco: Number(preco),
+    quantidade: Number(quantidade),
+  };
+
+  produtos.push(novoProduto);
+
+  res.status(201).json(novoProduto);
 });
 ```
 
-- `app.get(caminho, handler)` registra o que o servidor deve fazer
-  quando alguém faz um pedido `GET` para aquele caminho.
-- `res.json(produtos)` responde convertendo o array para JSON.
+`gerarProximoId()` é uma função auxiliar que pega o maior `id` que já
+existe no array e soma 1 — assim nunca repetimos um id, mesmo depois de
+remover produtos no meio da lista.
 
-E por fim:
+## 3. Atualizar um produto — `PUT /produtos/:id`
 
 ```js
-app.listen(PORTA, () => {
-  console.log(`Servidor rodando em http://localhost:${PORTA}`);
+app.put("/produtos/:id", (req, res) => {
+  const id = Number(req.params.id);
+  const produto = produtos.find((produto) => produto.id === id);
+
+  if (!produto) {
+    return res.status(404).json({ erro: "Produto não encontrado" });
+  }
+
+  const { nome, preco, quantidade } = req.body;
+  produto.nome = nome;
+  produto.preco = Number(preco);
+  produto.quantidade = Number(quantidade);
+
+  res.json(produto);
 });
 ```
 
-Isso deixa o servidor esperando pedidos na porta `3000`.
+`req.params.id` vem da própria URL (ex: `/produtos/3` → `req.params.id`
+é `"3"`, por isso convertemos com `Number(...)`).
 
-## 3. Rodando o servidor
+## 4. Remover um produto — `DELETE /produtos/:id`
 
-```bash
-cd backend
-npm install     # só na primeira vez
-npm run dev
+```js
+app.delete("/produtos/:id", (req, res) => {
+  const id = Number(req.params.id);
+  const indice = produtos.findIndex((produto) => produto.id === id);
+
+  if (indice === -1) {
+    return res.status(404).json({ erro: "Produto não encontrado" });
+  }
+
+  const [produtoRemovido] = produtos.splice(indice, 1);
+
+  res.json(produtoRemovido);
+});
 ```
 
-O script `dev` roda `node --watch server.js`: o `--watch` faz o Node
-reiniciar sozinho o servidor sempre que você salvar uma alteração no
-código (parecido com o que o Vite faz no front-end).
+## 5. Testando sem Postman
 
-## 4. Testando a API no navegador
+Pela barra de endereço do navegador só dá pra testar `GET`. Para testar
+`POST`, `PUT` e `DELETE` sem instalar nenhum programa extra, vamos usar
+o próprio `fetch` do navegador — a mesma função que o React vai usar na
+aula 6.
 
-Com o servidor rodando, abra no navegador:
+Com o back-end rodando (`cd backend && npm run dev`), abra
+`http://localhost:3000` no navegador, abra o **DevTools** (F12), vá na
+aba **Console** e cole:
 
-- `http://localhost:3000/` → deve mostrar a mensagem de teste.
-- `http://localhost:3000/produtos` → deve mostrar a lista de produtos
-  em JSON.
+```js
+// Criar um produto novo
+fetch("http://localhost:3000/produtos", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ nome: "Borracha", preco: 3.5, quantidade: 50 }),
+})
+  .then((res) => res.json())
+  .then((dados) => console.log(dados));
+```
 
-Repare que é exatamente esse tipo de resposta que o React vai passar a
-consumir a partir da aula 6, no lugar da lista fixa em
-`data/produtos.js`.
+```js
+// Atualizar o produto de id 1 (troque o id se precisar)
+fetch("http://localhost:3000/produtos/1", {
+  method: "PUT",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ nome: "Caderno Grande", preco: 18, quantidade: 25 }),
+})
+  .then((res) => res.json())
+  .then((dados) => console.log(dados));
+```
+
+```js
+// Remover o produto de id 2 (troque o id se precisar)
+fetch("http://localhost:3000/produtos/2", { method: "DELETE" })
+  .then((res) => res.json())
+  .then((dados) => console.log(dados));
+```
+
+Depois de cada teste, recarregue `http://localhost:3000/produtos` para
+conferir que a lista realmente mudou.
 
 ## Exercício da aula
 
-1. Suba o servidor e confirme as duas rotas no navegador.
-2. Adicione um quinto produto direto no array `produtos` do
-   `server.js`, salve e recarregue `http://localhost:3000/produtos` —
-   repare que não precisou reiniciar o servidor manualmente (o
-   `--watch` faz isso).
-3. Crie uma nova rota `GET /produtos/:id` que retorna **um único**
-   produto, buscando pelo `id` recebido em `req.params.id`. Dica: use
-   `produtos.find(...)`.
+1. Rode o back-end e teste as três rotas novas com os snippets acima.
+2. Tente atualizar (`PUT`) ou remover (`DELETE`) um id que não existe
+   (ex: `999`) e confirme que a API responde `404` com uma mensagem de
+   erro.
+3. Adicione uma validação simples no `POST`: se `nome` não for enviado
+   (ou vier vazio), responda `400` com `{ erro: "Nome é obrigatório" }`
+   em vez de criar o produto.
 
 ## O que vem na próxima aula
 
-Por enquanto nossa API só **lê** dados (`GET`). Na aula 5 vamos
-completar o CRUD no back-end, adicionando rotas para **criar**,
-**atualizar** e **remover** produtos.
+Nossa API já faz o CRUD inteiro, mas o React (em `frontend/`) ainda usa
+dados mockados e um "CRUD fake" só em memória do navegador. Na aula 6
+vamos conectar as duas pontas: o React vai passar a buscar, criar,
+atualizar e remover produtos **de verdade**, chamando essa API.
