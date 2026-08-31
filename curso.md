@@ -2,9 +2,9 @@
 
 Curso introdutório de desenvolvimento web full-stack para quem nunca
 programou pra web. No final, cada aluno terá construído do zero um
-sistema simples de cadastro de produtos (adicionar, listar, editar e
-remover), com uma tela em **React** conversando com uma API em
-**Node.js**.
+sistema simples de cadastro de produtos (adicionar, listar e remover,
+com a rota de atualização da API pronta para quem quiser ir além), com
+uma tela em **React** conversando com uma API em **Node.js**.
 
 ## Para quem é este curso
 
@@ -79,6 +79,28 @@ fundamentos-web/       # aula 1: HTML/CSS/JS puro (referência)
 frontend/              # projeto React (Vite)
 backend/                # projeto Node/Express (API)
 ```
+
+## Como rodar o projeto completo (branch `main`)
+
+O front-end e o back-end são projetos separados e precisam rodar ao
+mesmo tempo, em dois terminais:
+
+```bash
+# terminal 1 - back-end (API na porta 3000)
+cd backend
+npm install
+npm run dev
+```
+
+```bash
+# terminal 2 - front-end (React na porta 5173)
+cd frontend
+npm install
+npm run dev
+```
+
+Depois é só abrir o endereço mostrado pelo terminal do front-end
+(geralmente `http://localhost:5173`) no navegador.
 
 ## Modelo de dados
 

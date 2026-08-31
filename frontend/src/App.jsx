@@ -23,6 +23,9 @@ function App() {
   }
 
   async function handleRemover(id) {
+    const confirmou = window.confirm("Remover este produto?");
+    if (!confirmou) return;
+
     await removerProduto(id);
     setProdutos((produtosAtuais) => produtosAtuais.filter((produto) => produto.id !== id));
   }
@@ -37,7 +40,7 @@ function App() {
         </section>
 
         <section className="cartao">
-          <h2>Produtos cadastrados</h2>
+          <h2>Produtos cadastrados{!carregando && !erro ? ` (${produtos.length})` : ""}</h2>
           {carregando && <p>Carregando produtos...</p>}
           {erro && <p className="mensagem-erro">{erro}</p>}
           {!carregando && !erro && (
