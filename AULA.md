@@ -1,125 +1,139 @@
-# Aula 3 — Estado e Formulários no React
+# Aula 4 — Back-end com Node.js e Express
 
-Até agora a lista de produtos era **fixa**: vinha sempre do mesmo
-arquivo (`data/produtos.js`) e nunca mudava enquanto a página estava
-aberta. Hoje vamos fazer o React guardar essa lista de um jeito que
-**pode mudar** — e criar um formulário de verdade para adicionar e
-remover produtos.
+Até aqui, tudo o que fizemos rodava **só no navegador**. Nesta aula
+vamos criar, pela primeira vez, um **servidor**: um programa que fica
+rodando esperando pedidos e respondendo com dados. É o começo do
+**back-end** do projeto.
+
+O front-end (React) e o back-end (Node/Express) são dois projetos
+**separados**, cada um rodando com seu próprio comando, em portas
+diferentes. Nesta aula vamos focar só no back-end — o front-end da
+aula 3 continua existindo em `frontend/`, mas ainda não conversa com o
+servidor novo.
 
 ## Conceitos novos desta aula
 
-- **`useState`**: a forma do React de guardar um valor que muda ao
-  longo do tempo e fazer a tela se atualizar sozinha quando ele muda.
-- **Componente controlado**: um `<input>` cujo valor é controlado pelo
-  React (via estado), em vez de deixado por conta do navegador.
-- **Levantar estado (lifting state up)**: guardar o estado no
-  componente pai (`App`) e passar funções para os filhos alterarem
-  esse estado.
+- **Cliente x Servidor**: o navegador (cliente) pede dados, o servidor
+  responde. É o mesmo modelo usado por qualquer site da internet.
+- **API**: um conjunto de endereços (rotas) que um servidor
+  disponibiliza para outros programas conversarem com ele.
+- **REST**: um jeito comum de organizar essas rotas usando o método
+  HTTP (GET, POST, PUT, DELETE) + um caminho (ex: `/produtos`).
+- **JSON**: o formato de texto usado para trocar dados entre cliente e
+  servidor — muito parecido com um objeto JavaScript.
+- **Porta**: um número que identifica "qual programa" deve receber a
+  conexão numa mesma máquina (o navegador roda em uma porta, a API em
+  outra).
 
-## 1. `useState`: guardando a lista de produtos
+## 1. Criando o projeto do back-end
 
-Abra `src/App.jsx`:
+O projeto já foi criado em `backend/`, do mesmo jeito que você faria do
+zero:
 
-```jsx
-import { useState } from "react";
-
-const [produtos, setProdutos] = useState(produtosIniciais);
+```bash
+mkdir backend
+cd backend
+npm init -y          # cria o package.json
+npm install express cors
 ```
 
-- `produtos` é o valor atual da lista.
-- `setProdutos` é a **função que usamos para mudar esse valor**. Nunca
-  alteramos `produtos` diretamente — sempre passamos por `setProdutos`.
-- `produtosIniciais` (importado de `data/produtos.js`) é usado só para
-  preencher a lista na primeira vez que a página carrega.
+- **Express** é a biblioteca que facilita criar rotas HTTP em Node.js.
+- **cors** é necessária porque o front-end (numa porta) e o back-end
+  (em outra porta) são considerados "origens diferentes" pelo
+  navegador — sem o `cors`, o navegador bloquearia as respostas por
+  segurança. Vamos usar isso de verdade na aula 6.
 
-Toda vez que `setProdutos` é chamado, o React re-renderiza a tela
-automaticamente com o novo valor. Isso substitui o trabalho manual que
-fazíamos com `appendChild` na aula 1.
+## 2. Lendo o `server.js`
 
-## 2. Adicionando um produto
+Abra `backend/server.js`:
 
-Ainda em `App.jsx`:
+```js
+import express from "express";
+import cors from "cors";
 
-```jsx
-function handleAdicionar(novoProduto) {
-  setProdutos((produtosAtuais) => [
-    ...produtosAtuais,
-    { id: Date.now(), ...novoProduto },
-  ]);
-}
+const app = express();
+const PORTA = 3000;
+
+app.use(cors());
 ```
 
-- `...produtosAtuais` copia todos os produtos que já existiam (o
-  "espalha" ou *spread*) — em React **nunca modificamos o array
-  diretamente**, sempre criamos um novo.
-- `Date.now()` gera um número diferente a cada chamada, usado aqui
-  como id "provisório" (na aula 5, quando tivermos um back-end de
-  verdade, o id passa a ser gerado pelo servidor).
+- `express()` cria a aplicação do servidor.
+- `app.use(cors())` liga o middleware de CORS pra toda a aplicação.
 
-Essa função é passada como prop para o formulário:
+Logo abaixo, temos o "banco de dados" deste curso:
 
-```jsx
-<FormularioProduto onAdicionar={handleAdicionar} />
+```js
+let produtos = [
+  { id: 1, nome: "Caderno", preco: 12.5, quantidade: 30 },
+  // ...
+];
 ```
 
-## 3. Formulário controlado
+É só um **array guardado na memória do processo Node**. Enquanto o
+servidor está rodando, dá pra ler e (nas próximas aulas) alterar esse
+array. Quando o servidor para, ele volta ao estado inicial — não existe
+nenhum arquivo ou banco salvando isso no disco. É a forma mais simples
+possível de simular um banco de dados.
 
-Abra `src/components/FormularioProduto.jsx`. Cada `<input>` tem:
+Depois vem a primeira rota de verdade:
 
-```jsx
-value={valores.nome}
-onChange={handleChange}
+```js
+app.get("/produtos", (req, res) => {
+  res.json(produtos);
+});
 ```
 
-Isso é um **input controlado**: o valor mostrado no campo vem sempre
-do estado (`valores.nome`), e qualquer letra digitada dispara
-`handleChange`, que atualiza o estado — que por sua vez atualiza o
-valor mostrado. O campo "obedece" ao React, em vez de guardar seu
-próprio valor internamente.
+- `app.get(caminho, handler)` registra o que o servidor deve fazer
+  quando alguém faz um pedido `GET` para aquele caminho.
+- `res.json(produtos)` responde convertendo o array para JSON.
 
-Ao enviar o formulário, `handleSubmit` chama a prop `onAdicionar` (que
-veio do `App`) com os dados digitados, e depois limpa o formulário
-voltando `valores` para o estado inicial.
+E por fim:
 
-## 4. Removendo um produto
-
-Em `src/components/ProdutoItem.jsx`, cada item agora tem um botão
-"Remover" que chama `onRemover(produto.id)`. Essa função foi passada
-por `ListaProdutos` e definida no `App.jsx`:
-
-```jsx
-function handleRemover(id) {
-  setProdutos((produtosAtuais) =>
-    produtosAtuais.filter((produto) => produto.id !== id),
-  );
-}
+```js
+app.listen(PORTA, () => {
+  console.log(`Servidor rodando em http://localhost:${PORTA}`);
+});
 ```
 
-`.filter()` cria um novo array **sem** o produto cujo `id` bate com o
-recebido — de novo, sem modificar o array original diretamente.
+Isso deixa o servidor esperando pedidos na porta `3000`.
 
-## 5. Lista vazia
+## 3. Rodando o servidor
 
-Em `src/components/ListaProdutos.jsx`, se `produtos.length === 0`, é
-mostrada a mensagem "Nenhum produto cadastrado." em vez da lista.
-Remova todos os produtos na tela para conferir esse comportamento.
+```bash
+cd backend
+npm install     # só na primeira vez
+npm run dev
+```
+
+O script `dev` roda `node --watch server.js`: o `--watch` faz o Node
+reiniciar sozinho o servidor sempre que você salvar uma alteração no
+código (parecido com o que o Vite faz no front-end).
+
+## 4. Testando a API no navegador
+
+Com o servidor rodando, abra no navegador:
+
+- `http://localhost:3000/` → deve mostrar a mensagem de teste.
+- `http://localhost:3000/produtos` → deve mostrar a lista de produtos
+  em JSON.
+
+Repare que é exatamente esse tipo de resposta que o React vai passar a
+consumir a partir da aula 6, no lugar da lista fixa em
+`data/produtos.js`.
 
 ## Exercício da aula
 
-1. Rode o projeto (`cd frontend && npm run dev`) e teste adicionar e
-   remover produtos várias vezes.
-2. Adicione um campo de confirmação: antes de remover um produto,
-   mostre um `window.confirm("Remover este produto?")` dentro de
-   `onRemover` — só remove se o usuário confirmar.
-3. Recarregue a página (F5) depois de adicionar um produto. Ele some,
-   assim como na aula 1 — o estado do React também só existe enquanto
-   a página está aberta, na memória.
+1. Suba o servidor e confirme as duas rotas no navegador.
+2. Adicione um quinto produto direto no array `produtos` do
+   `server.js`, salve e recarregue `http://localhost:3000/produtos` —
+   repare que não precisou reiniciar o servidor manualmente (o
+   `--watch` faz isso).
+3. Crie uma nova rota `GET /produtos/:id` que retorna **um único**
+   produto, buscando pelo `id` recebido em `req.params.id`. Dica: use
+   `produtos.find(...)`.
 
 ## O que vem na próxima aula
 
-Nosso app ainda não guarda nada "de verdade": tudo é perdido ao
-recarregar a página. Isso porque não existe nenhum servidor guardando
-esses dados em algum lugar — só a memória do navegador. Na aula 4
-vamos sair do front-end pela primeira vez e criar um **back-end**: um
-servidor Node.js com uma API que vai, no futuro, guardar os produtos de
-verdade.
+Por enquanto nossa API só **lê** dados (`GET`). Na aula 5 vamos
+completar o CRUD no back-end, adicionando rotas para **criar**,
+**atualizar** e **remover** produtos.
