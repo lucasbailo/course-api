@@ -58,3 +58,56 @@ main {
   font-weight: bold;
   flex: 1;
 }
+
+.lista-vazia {
+  color: #666;
+  font-style: italic;
+  margin: 0;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+label {
+  font-size: 14px;
+  font-weight: bold;
+  margin-top: 8px;
+}
+
+input {
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+button {
+  padding: 10px;
+  background-color: #2f6f4f;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: #255a3f;
+}
+
+form button {
+  margin-top: 16px;
+}
+
+.botao-remover {
+  padding: 4px 10px;
+  background-color: #b3413f;
+  font-size: 13px;
+}
+
+.botao-remover:hover {
+  background-color: #8f3230;
+}
