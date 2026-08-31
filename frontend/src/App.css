@@ -65,6 +65,11 @@ main {
   margin: 0;
 }
 
+.mensagem-erro {
+  color: #8f3230;
+  margin: 0;
+}
+
 form {
   display: flex;
   flex-direction: column;

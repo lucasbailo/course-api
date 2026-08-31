@@ -1,24 +1,30 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "./App.css";
 import Header from "./components/Header";
 import FormularioProduto from "./components/FormularioProduto";
 import ListaProdutos from "./components/ListaProdutos";
-import produtosIniciais from "./data/produtos";
+import { listarProdutos, criarProduto, removerProduto } from "./api/produtos";
 
 function App() {
-  const [produtos, setProdutos] = useState(produtosIniciais);
+  const [produtos, setProdutos] = useState([]);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState(null);
 
-  function handleAdicionar(novoProduto) {
-    setProdutos((produtosAtuais) => [
-      ...produtosAtuais,
-      { id: Date.now(), ...novoProduto },
-    ]);
+  useEffect(() => {
+    listarProdutos()
+      .then(setProdutos)
+      .catch(() => setErro("Não foi possível carregar os produtos. O back-end está rodando?"))
+      .finally(() => setCarregando(false));
+  }, []);
+
+  async function handleAdicionar(novoProduto) {
+    const produtoCriado = await criarProduto(novoProduto);
+    setProdutos((produtosAtuais) => [...produtosAtuais, produtoCriado]);
   }
 
-  function handleRemover(id) {
-    setProdutos((produtosAtuais) =>
-      produtosAtuais.filter((produto) => produto.id !== id),
-    );
+  async function handleRemover(id) {
+    await removerProduto(id);
+    setProdutos((produtosAtuais) => produtosAtuais.filter((produto) => produto.id !== id));
   }
 
   return (
@@ -32,7 +38,11 @@ function App() {
 
         <section className="cartao">
           <h2>Produtos cadastrados</h2>
-          <ListaProdutos produtos={produtos} onRemover={handleRemover} />
+          {carregando && <p>Carregando produtos...</p>}
+          {erro && <p className="mensagem-erro">{erro}</p>}
+          {!carregando && !erro && (
+            <ListaProdutos produtos={produtos} onRemover={handleRemover} />
+          )}
         </section>
       </main>
     </>
